@@ -23,6 +23,8 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
 
     // Test
+    testImplementation("org.springframework.boot:spring-boot-test-autoconfigure")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("com.fasterxml.jackson.core:jackson-databind")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")
