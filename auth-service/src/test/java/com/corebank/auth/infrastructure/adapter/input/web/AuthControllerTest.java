@@ -48,6 +48,11 @@ class AuthControllerTest {
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
             return http.build();
         }
+
+        @Bean
+        public ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
     }
 
     @Test
