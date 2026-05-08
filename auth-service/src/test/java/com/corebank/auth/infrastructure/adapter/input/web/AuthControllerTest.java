@@ -1,6 +1,7 @@
 package com.corebank.auth.infrastructure.adapter.input.web;
 
 import com.corebank.auth.application.port.input.AuthenticateUseCase;
+import com.corebank.commons.exception.GlobalExceptionHandler;
 import com.corebank.commons.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -25,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
-@Import({AuthController.class, AuthControllerTest.TestSecurityConfig.class})
+@Import({AuthController.class, AuthControllerTest.TestSecurityConfig.class, GlobalExceptionHandler.class})
 class AuthControllerTest {
 
     @Autowired
