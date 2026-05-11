@@ -343,6 +343,6 @@ curl http://localhost:8082/api/home/balance \
 
 ---
 
-> This project is not a toy — it is a deliberate, production-inspired demonstration of the exact modernization journey used in enterprise fintech at VCSoft/Davivienda.
+> This project is not a toy — it is a deliberate, production-inspired demonstration of the exact modernization journey used in enterprise fintech.
 >
 > All phases use **Spring Boot 4.0.6 + Java 21** while demonstrating progressive architectural improvement.
