@@ -5,7 +5,7 @@
 **Phase 2 – Microservices Migration (Java)**
 
 **Document Version:** 1.0  
-**Last Updated:** May 06, 2026  
+**Last Updated:** May 10, 2026  
 **Status:** Active  
 **Project Series:** CoreBank Modernization Journey
 
@@ -24,7 +24,24 @@ From a single tightly-coupled Spring Boot application, we now have:
 
 ---
 
-## 2. Architecture
+## 2. System Overview
+
+**Purpose**  
+Demonstrate the modernization of a legacy banking application into independently scalable microservices while maintaining the exact same external API contract.
+
+**Business Capabilities**
+- Client authentication with JWT and banking headers (`auth-service`)
+- Aggregated product & balance information for authenticated clients (`core-service`)
+
+**Non-Functional Goals**
+- 80%+ test coverage enforced per module
+- Independent deployments
+- High availability via reactive patterns and circuit breaking
+- Strict separation of business logic from infrastructure using Hexagonal Architecture
+
+---
+
+## 3. Architecture
 
 ### High-Level Flow
 ```mermaid
@@ -70,7 +87,7 @@ sequenceDiagram
 
 ---
 
-## 3. Technical Stack
+## 4. Technical Stack
 
 | Category                  | Technology                              | Version       | Service                          |
 |---------------------------|-----------------------------------------|---------------|----------------------------------|
@@ -91,7 +108,7 @@ sequenceDiagram
 
 ---
 
-## 4. Project Structure
+## 5. Project Structure
 
 ```
 corebank-microservices-java/
@@ -122,13 +139,29 @@ corebank-microservices-java/
 
 ---
 
-## 5. API Endpoints (Identical Contract to Phase 1)
+## 6. Domain Capabilities
 
-| Endpoint              | Service        | Method | Description                  | Required Headers                      |
-|-----------------------|----------------|--------|------------------------------|---------------------------------------|
-| `/api/auth/login`     | auth-service   | POST   | Authenticate + issue JWT     | `X-CustIdentNum`, `X-CustIdentType`  |
-| `/api/home/balance`   | core-service   | GET    | Aggregated homepage data     | All banking headers + `Authorization` |
-| `/actuator/health`    | both           | GET    | Health check                 | -                                     |
+**Authentication Domain (`auth-service`)**
+- Full Hexagonal implementation.
+- Login with document number / password (mock).
+- JWT generation + custom claims cached in Redis.
+- Banking header enrichment.
+
+**Homepage / Product Domain (`core-service`)**
+- Full Hexagonal implementation.
+- Aggregated view of accounts, cards, and balances.
+- Reactive, parallel data retrieval using `Mono.zip()`.
+- Protected by Circuit Breaker and Retry mechanisms using Resilience4j.
+
+---
+
+## 7. API Endpoints (Identical Contract to Phase 1)
+
+| Endpoint              | Service        | Port | Method | Description                  | Required Headers                      |
+|-----------------------|----------------|------|--------|------------------------------|---------------------------------------|
+| `/api/auth/login`     | auth-service   | 8081 | POST   | Authenticate + issue JWT     | `X-CustIdentNum`, `X-CustIdentType`  |
+| `/api/home/balance`   | core-service   | 8082 | GET    | Aggregated homepage data     | All banking headers + `Authorization` |
+| `/actuator/health`    | both           | 8081/2| GET   | Health check                 | -                                     |
 
 **Response Format** (from `banking-commons`):
 ```json
@@ -141,7 +174,7 @@ corebank-microservices-java/
 
 ---
 
-## 6. How to Run
+## 8. How to Run (Local Development)
 
 ### Prerequisites
 - Java 21
@@ -161,22 +194,6 @@ docker compose up -d   # Postgres + Redis
 ./gradlew :core-service:bootRun
 ```
 
-### Quick Verification
-```bash
-# Login (auth-service :8081)
-curl -X POST http://localhost:8081/api/auth/login \
-  -H "Content-Type: application/json" \
-  -H "X-CustIdentNum: 123456789" \
-  -H "X-CustIdentType: CC" \
-  -d '{"username":"user","password":"password"}'
-
-# Home Balance (core-service :8082 — use token from login)
-curl http://localhost:8082/api/home/balance \
-  -H "Authorization: Bearer <token>" \
-  -H "X-CustIdentNum: 123456789" \
-  -H "X-CustIdentType: CC"
-```
-
 ### Stop
 ```bash
 docker compose down -v
@@ -184,7 +201,38 @@ docker compose down -v
 
 ---
 
-## 7. Before / After Comparison (Phase 1 → Phase 2)
+## 9. Security
+
+- Dual-Security Architecture implemented in `banking-commons`:
+  - `BankingSecurityFilter`: Blocks and authenticates requests for MVC apps (`auth-service`) using `OncePerRequestFilter`.
+  - `ReactiveJwtFilter`: Secures WebFlux apps (`core-service`) natively using `WebFilter`.
+- Extracts standard banking headers (`X-CustIdentNum`, `X-CustIdentType`, `X-RqUid`, `X-SesID`).
+- All business endpoints require a valid JWT except for login and actuator.
+
+---
+
+## 10. Infrastructure & Deployment
+
+- Local infrastructure powered by Docker Compose.
+- **PostgreSQL** runs on port `5432` for `core-service`.
+- **Redis** runs on port `6379` for `auth-service` token caching.
+- Services are built natively as executable JARs using the Spring Boot plugin in sub-modules.
+
+---
+
+## 11. Testing
+
+**Coverage Target**: ≥ 80% per module (JaCoCo enforced in root `build.gradle.kts`)
+
+**Commands**:
+```bash
+./gradlew clean build jacocoTestReport
+```
+Tests strictly adhere to testing layers individually (e.g., Use cases are unit-tested without loading the Spring Context, Web adapters are tested using `@WebMvcTest` and `@WebFluxTest`).
+
+---
+
+## 12. Before / After Comparison (Phase 1 → Phase 2)
 
 | Aspect                  | Phase 1 (Monolith)          | Phase 2 (Microservices)                   |
 |-------------------------|-----------------------------|-------------------------------------------|
@@ -200,12 +248,97 @@ docker compose down -v
 
 ---
 
-## 8. Testing
+## 13. Development Guidelines
 
-**Coverage Target**: ≥80% JaCoCo per module
+- **Architecture Rules:** Business logic strictly belongs in the `domain` and `application` layers. Spring/JPA/Web code strictly belongs in `infrastructure`. 
+- **Dependencies:** The core layers (`domain`, `application`) must NOT depend on Spring, JPA, or Web classes. Use interfaces (ports) to communicate.
+- **Shared Commons:** Cross-cutting concerns go in `banking-commons`. Do not duplicate DTOs, Security classes, or utility functions in the individual microservices.
+- **Testing:** Mock input/output ports when testing application services. Target minimum 80% coverage per module.
+
+---
+
+## 14. Monitoring & Observability
+
+- **Spring Boot Actuator:** Present in both services for `/actuator/health`.
+- **Resilience4j Metrics:** Available in `core-service` to monitor Circuit Breaker states for external calls (like DB queries).
+- **Redis Cache:** Integrated to cache issued JWTs.
+
+---
+
+## 15. How to Test the Endpoints with Insomnia (or any HTTP Client)
+
+### Recommended Insomnia Setup
+
+Since services are now split by port, using an environment setup is highly recommended.
+
+1. Create a new **Collection**: `CoreBank Microservices - Phase 2`
+2. Create an **Environment** named `Local` with these variables:
+
+   ```json
+   {
+     "authBaseUrl": "http://localhost:8081",
+     "coreBaseUrl": "http://localhost:8082",
+     "custIdentNum": "123456789",
+     "custIdentType": "CC"
+   }
+   ```
+
+---
+
+##### 1. Login (Get JWT Token)
+
+**Request Name**: `1. POST Login`
+
+- **Method**: `POST`
+- **URL**: `{{ authBaseUrl }}/api/auth/login`
+- **Headers**:
+    - `Content-Type`: `application/json`
+    - `X-CustIdentNum`: `{{ custIdentNum }}`
+    - `X-CustIdentType`: `{{ custIdentType }}`
+- **Body** (JSON):
+  ```json
+  {
+    "username": "user",
+    "password": "password"
+  }
+  ```
+
+**Expected**: `200 OK` with `ResponseDTO` containing JWT in `body`.
+
+> **Tip**: Right-click the token in the response → **Store Response** → Save as variable named `authToken`
+
+---
+
+##### 2. Get Aggregated Balance (Protected Endpoint)
+
+**Request Name**: `2. GET Home Balance`
+
+- **Method**: `GET`
+- **URL**: `{{ coreBaseUrl }}/api/home/balance`
+- **Headers**:
+    - `Authorization`: `Bearer {{ authToken }}`
+    - `X-CustIdentNum`: `{{ custIdentNum }}`
+    - `X-CustIdentType`: `{{ custIdentType }}`
+
+**Expected**: `200 OK` with `ResponseDTO` containing parallel-aggregated account data.
+
+---
+
+##### Quick Verification (Terminal)
 
 ```bash
-./gradlew clean build jacocoTestReport
+# Login (auth-service :8081)
+curl -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -H "X-CustIdentNum: 123456789" \
+  -H "X-CustIdentType: CC" \
+  -d '{"username":"user","password":"password"}'
+
+# Home Balance (core-service :8082 — replace <token> with the token from above)
+curl http://localhost:8082/api/home/balance \
+  -H "Authorization: Bearer <token>" \
+  -H "X-CustIdentNum: 123456789" \
+  -H "X-CustIdentType: CC"
 ```
 
 ---
