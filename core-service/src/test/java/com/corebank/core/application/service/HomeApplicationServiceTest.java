@@ -110,4 +110,21 @@ class HomeApplicationServiceTest {
                 .expectNextCount(1)
                 .verifyComplete();
     }
+    @Test
+    @DisplayName("getAggregatedBalanceFallback should return empty aggregate")
+    void getAggregatedBalanceFallbackShouldReturnEmptyAggregate() {
+        String customerId = "123456789";
+        Throwable throwable = new RuntimeException("Circuit breaker open");
+
+        Mono<HomeAggregate> result = org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                homeService, "getAggregatedBalanceFallback", customerId, throwable);
+
+        StepVerifier.create(result)
+                .expectNextMatches(aggregate ->
+                        aggregate.getAccounts().isEmpty() &&
+                                aggregate.getCards().isEmpty() &&
+                                aggregate.getBalance() == null
+                )
+                .verifyComplete();
+    }
 }
