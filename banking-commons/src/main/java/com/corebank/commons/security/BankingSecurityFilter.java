@@ -30,7 +30,7 @@ public class BankingSecurityFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.contains("/api/auth/login") || path.startsWith("/actuator");
+        return path.startsWith("/api/auth/") || path.startsWith("/actuator");
     }
 
     @Override
