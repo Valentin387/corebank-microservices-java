@@ -339,7 +339,55 @@ curl http://localhost:8082/api/home/balance \
   -H "Authorization: Bearer <token>" \
   -H "X-CustIdentNum: 123456789" \
   -H "X-CustIdentType: CC"
+
+# Health Check (auth-service :8081)
+curl http://localhost:8081/actuator/health
+
+# Health Check (core-service :8082)
+curl http://localhost:8082/actuator/health
 ```
+
+---
+
+##### Health Check Outcomes
+
+**Positive Response** (Both services running):
+```json
+{
+  "status": "UP",
+  "components": {
+    "redis": {
+      "status": "UP"
+    },
+    "diskSpace": {
+      "status": "UP"
+    }
+  }
+}
+```
+✅ **Indicates**: Service is healthy and all dependencies (Redis, database connections, disk space) are available. Safe to execute business endpoints.
+
+**Negative Response** (Service unavailable):
+```bash
+curl: (7) Failed to connect to port 8081: Connection refused
+```
+❌ **Indicates**: Service is not running. Ensure `./gradlew :auth-service:bootRun` is executing in a separate terminal before testing endpoints.
+
+**Degraded Response** (Partial failure):
+```json
+{
+  "status": "DOWN",
+  "components": {
+    "redis": {
+      "status": "DOWN",
+      "details": {
+        "error": "org.springframework.data.redis.connection.RedisConnectionFailureException"
+      }
+    }
+  }
+}
+```
+⚠️ **Indicates**: Service is running but a dependency (Redis, PostgreSQL) is unreachable. Start infrastructure: `docker compose up -d` and verify containers are running.
 
 ---
 
