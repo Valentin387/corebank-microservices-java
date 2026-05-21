@@ -3,7 +3,7 @@ package com.corebank.commons.security;
 /**
  * Constants for custom banking headers used across all CoreBank services.
  * These headers simulate the production banking header propagation pattern
- * used in real financial institutions (Davivienda, RBC, Scotiabank, etc.).
+ * used in real financial institutions.
  */
 public final class HeaderConstants {
 
