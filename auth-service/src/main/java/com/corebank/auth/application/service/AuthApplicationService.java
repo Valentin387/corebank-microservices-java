@@ -3,6 +3,8 @@ package com.corebank.auth.application.service;
 import com.corebank.auth.application.port.input.AuthenticateUseCase;
 import com.corebank.auth.application.port.output.TokenCachePort;
 import com.corebank.auth.domain.model.Credentials;
+import com.corebank.commons.event.EventPublisherPort;
+import com.corebank.commons.event.UserAuthenticatedEvent;
 import com.corebank.commons.security.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +15,7 @@ import java.util.Map;
 
 /**
  * Application service implementing the authentication use case.
- * Orchestrates: credential validation → JWT generation → Redis caching.
+ * Orchestrates: credential validation → JWT generation → Redis caching → Event publishing.
  */
 @Service
 public class AuthApplicationService implements AuthenticateUseCase {
@@ -22,10 +24,13 @@ public class AuthApplicationService implements AuthenticateUseCase {
 
     private final JwtUtil jwtUtil;
     private final TokenCachePort tokenCachePort;
+    private final EventPublisherPort eventPublisherPort;
 
-    public AuthApplicationService(JwtUtil jwtUtil, TokenCachePort tokenCachePort) {
+    public AuthApplicationService(JwtUtil jwtUtil, TokenCachePort tokenCachePort,
+                                  EventPublisherPort eventPublisherPort) {
         this.jwtUtil = jwtUtil;
         this.tokenCachePort = tokenCachePort;
+        this.eventPublisherPort = eventPublisherPort;
     }
 
     @Override
@@ -51,6 +56,25 @@ public class AuthApplicationService implements AuthenticateUseCase {
         tokenCachePort.cacheToken(cacheKey, token, 3600);
 
         log.info("Authentication successful for user: {}, custIdentNum: {}", username, custIdentNum);
+
+        // Phase 3: Publish UserAuthenticatedEvent (asynchronous)
+        try {
+            String sessionId = (String) claims.get("X-SesID");
+            UserAuthenticatedEvent event = new UserAuthenticatedEvent(
+                    custIdentNum,
+                    custIdentNum,
+                    custIdentType,
+                    username,
+                    token,
+                    sessionId
+            );
+            eventPublisherPort.publish(event);
+            log.debug("Published UserAuthenticatedEvent for user: {}", username);
+        } catch (Exception e) {
+            log.error("Failed to publish authentication event, but authentication completed successfully", e);
+            // Event publishing failure should not fail the authentication flow
+        }
+
         return token;
     }
 }

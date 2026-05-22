@@ -8,6 +8,11 @@ spring:
     redis:
       host: localhost
       port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+
+kafka:
+  bootstrap-servers: localhost:9092
 
 jwt:
   secret: super-secret-for-demo-only-change-in-prod

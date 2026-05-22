@@ -22,6 +22,15 @@ spring:
   main:
     web-application-type: reactive
     allow-bean-definition-overriding: true
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: core-service-group
+
+kafka:
+  bootstrap-servers: localhost:9092
+  consumer:
+    group-id: core-service-group
 
 jwt:
   secret: super-secret-for-demo-only-change-in-prod
