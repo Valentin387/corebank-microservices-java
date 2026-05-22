@@ -55,6 +55,7 @@ logging:
   level:
     com.corebank: DEBUG
     org.springframework: INFO
+    org.apache.kafka: WARN
 
 management:
   endpoints:
