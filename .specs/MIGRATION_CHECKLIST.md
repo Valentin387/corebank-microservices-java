@@ -10,7 +10,7 @@
 
 ### Git & Environment
 
-- [ ] Git branch created: `git checkout -b feature/phase-4-kotlin-migration`
+- [X] Git branch created: `git checkout -b feature/phase-4-kotlin-migration`
 - [ ] Branch protection configured (if using shared repo)
 - [ ] Local environment: Kotlin 1.9.22+ installed (`kotlinc -version`)
 - [ ] Gradle 8.13+ available (`./gradlew --version`)
